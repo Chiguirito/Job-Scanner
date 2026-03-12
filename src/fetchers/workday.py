@@ -43,19 +43,35 @@ class WorkdayFetcher(BaseFetcher):
         raw_postings = self._fetch_all_postings()
         jobs = [self._to_job(p) for p in raw_postings]
         if self.config.fetch_descriptions:
-            jobs = [self._enrich_with_description(j, p) for j, p in zip(jobs, raw_postings)]
+            jobs = self.enrich_descriptions(jobs, raw_postings)
         return jobs
+
+    def fetch_listings(self) -> tuple[list[Job], list[dict[str, Any]]]:
+        """Fetch job listings without descriptions. Returns (jobs, raw_postings)."""
+        raw_postings = self._fetch_all_postings()
+        jobs = [self._to_job(p) for p in raw_postings]
+        return jobs, raw_postings
+
+    def enrich_descriptions(
+        self, jobs: list[Job], raw_postings: list[dict[str, Any]]
+    ) -> list[Job]:
+        """Fetch full descriptions for a list of jobs from the detail endpoint."""
+        return [self._enrich_with_description(j, p) for j, p in zip(jobs, raw_postings)]
 
     def _fetch_all_postings(self) -> list[dict[str, Any]]:
         """Paginate through the Workday jobs endpoint."""
         postings: list[dict[str, Any]] = []
         offset = 0
         total_limit = self.config.limit
+        total: int | None = None
 
         while True:
             batch = self._fetch_page(offset)
-            total = batch.get("total", 0)
             page_postings = batch.get("jobPostings", [])
+
+            # Capture total from first page only (later pages may return 0)
+            if total is None:
+                total = batch.get("total", 0)
 
             if not page_postings:
                 break

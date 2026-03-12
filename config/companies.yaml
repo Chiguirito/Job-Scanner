@@ -1,3 +1,6 @@
+regions:
+  - "Germany"
+
 companies:
   - name: NVIDIA
     ats: workday
