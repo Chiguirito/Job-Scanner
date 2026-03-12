@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import logging
 import re
 from dataclasses import dataclass
@@ -137,8 +138,9 @@ class WorkdayFetcher(BaseFetcher):
         )
 
 
-def _strip_html(html: str) -> str:
-    """Remove HTML tags and collapse whitespace."""
-    text = re.sub(r"<[^>]+>", " ", html)
+def _strip_html(raw: str) -> str:
+    """Remove HTML tags, decode entities, and collapse whitespace."""
+    text = re.sub(r"<[^>]+>", " ", raw)
+    text = html.unescape(text)
     text = re.sub(r"\s+", " ", text)
     return text.strip()
