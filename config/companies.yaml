@@ -1,0 +1,12 @@
+companies:
+  - name: NVIDIA
+    ats: workday
+    config:
+      base_url: "https://nvidia.wd5.myworkdayjobs.com"
+      site_path: "/wday/cxs/nvidia/NVIDIAExternalCareerSite"
+      site_name: "NVIDIAExternalCareerSite"
+      # Optional: filter by search text or facets
+      # search_text: "software engineer"
+      # applied_facets:
+      #   jobFamilyGroup:
+      #     - "0c40f6bd1d8f10ae43ffaefd46dc7e78"  # Engineering
