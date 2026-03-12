@@ -9,6 +9,13 @@ data/
 __pycache__/
 *.pyc
 *.pyo
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
 
 # macOS
 .DS_Store
