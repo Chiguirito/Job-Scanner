@@ -46,7 +46,7 @@ class TestJobStore:
         store.save([job])
         assert store.is_new(job) is False
 
-    def test_save_ignores_duplicates(self, store: JobStore) -> None:
+    def test_save_updates_last_seen_on_duplicate(self, store: JobStore) -> None:
         job = _make_job()
         store.save([job])
         store.save([job])
@@ -64,7 +64,7 @@ class TestJobStore:
     def test_filter_new_with_empty_list(self, store: JobStore) -> None:
         assert store.filter_new([]) == []
 
-    def test_filter_new_saves_new_jobs(self, store: JobStore) -> None:
+    def test_filter_new_saves_all_jobs(self, store: JobStore) -> None:
         job = _make_job()
         store.filter_new([job])
         assert store.is_new(job) is False
@@ -79,3 +79,61 @@ class TestJobStore:
         job2 = _make_job(company="Globex", job_id="1")
         store.save([job1, job2])
         assert store.count() == 2
+
+
+class TestJobStoreClosedTracking:
+    def test_new_jobs_are_active(self, store: JobStore) -> None:
+        store.save([_make_job(job_id="1")])
+        assert store.count(active_only=True) == 1
+
+    def test_mark_closed_deactivates_missing_jobs(self, store: JobStore) -> None:
+        job1 = _make_job(job_id="1")
+        job2 = _make_job(job_id="2")
+        store.save([job1, job2])
+
+        closed = store.mark_closed("Acme", {job1.unique_key})
+
+        assert len(closed) == 1
+        assert job2.unique_key in closed
+        assert store.count(active_only=True) == 1
+        assert store.count() == 2
+
+    def test_mark_closed_returns_empty_when_all_still_active(self, store: JobStore) -> None:
+        job1 = _make_job(job_id="1")
+        store.save([job1])
+
+        closed = store.mark_closed("Acme", {job1.unique_key})
+
+        assert closed == []
+        assert store.count(active_only=True) == 1
+
+    def test_mark_closed_only_affects_specified_company(self, store: JobStore) -> None:
+        acme_job = _make_job(company="Acme", job_id="1")
+        globex_job = _make_job(company="Globex", job_id="1")
+        store.save([acme_job, globex_job])
+
+        closed = store.mark_closed("Acme", set())
+
+        assert len(closed) == 1
+        assert acme_job.unique_key in closed
+        assert store.count(active_only=True) == 1  # Globex still active
+
+    def test_resave_reactivates_closed_job(self, store: JobStore) -> None:
+        job = _make_job(job_id="1")
+        store.save([job])
+        store.mark_closed("Acme", set())
+        assert store.count(active_only=True) == 0
+
+        store.save([job])
+        assert store.count(active_only=True) == 1
+
+    def test_filter_new_updates_last_seen_for_existing(self, store: JobStore) -> None:
+        job1 = _make_job(job_id="1")
+        job2 = _make_job(job_id="2")
+        store.save([job1])
+
+        new = store.filter_new([job1, job2])
+
+        assert new == [job2]
+        assert store.count() == 2
+        assert store.count(active_only=True) == 2
