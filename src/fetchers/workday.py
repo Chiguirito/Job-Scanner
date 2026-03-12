@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
 from typing import Any
+
 import requests
 
 from src.fetchers.base import BaseFetcher
@@ -24,6 +26,7 @@ class WorkdayConfig:
     search_text: str = ""
     applied_facets: dict[str, list[str]] | None = None
     limit: int | None = None  # max total jobs to fetch; None = all
+    fetch_descriptions: bool = True  # fetch full JD from detail endpoint
 
 
 class WorkdayFetcher(BaseFetcher):
@@ -32,12 +35,15 @@ class WorkdayFetcher(BaseFetcher):
     def __init__(self, config: WorkdayConfig) -> None:
         self.config = config
         self._jobs_url = f"{config.base_url}{config.site_path}/jobs"
-        self._job_detail_url = f"{config.base_url}{config.site_path}/job"
+        self._detail_base = f"{config.base_url}{config.site_path}"
 
     def fetch(self) -> list[Job]:
         """Fetch all job postings from the Workday career site."""
         raw_postings = self._fetch_all_postings()
-        return [self._to_job(p) for p in raw_postings]
+        jobs = [self._to_job(p) for p in raw_postings]
+        if self.config.fetch_descriptions:
+            jobs = [self._enrich_with_description(j, p) for j, p in zip(jobs, raw_postings)]
+        return jobs
 
     def _fetch_all_postings(self) -> list[dict[str, Any]]:
         """Paginate through the Workday jobs endpoint."""
@@ -87,7 +93,7 @@ class WorkdayFetcher(BaseFetcher):
         job_req_id = bullet_fields[0] if bullet_fields else posting.get("externalPath", "")
 
         external_path = posting.get("externalPath", "")
-        job_url = f"{self.config.base_url}/{self.config.site_name}/job{external_path}"
+        job_url = f"{self.config.base_url}/{self.config.site_name}{external_path}"
 
         return Job(
             title=posting.get("title", ""),
@@ -99,3 +105,40 @@ class WorkdayFetcher(BaseFetcher):
             description="",
             posted_date=None,
         )
+
+    def _enrich_with_description(self, job: Job, posting: dict[str, Any]) -> Job:
+        """Fetch the full job description from the detail endpoint."""
+        external_path = posting.get("externalPath", "")
+        if not external_path:
+            return job
+
+        detail_url = f"{self._detail_base}{external_path}"
+        try:
+            resp = requests.get(detail_url, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception:
+            logger.warning("Failed to fetch detail for %s", job.ats_job_id)
+            return job
+
+        info = data.get("jobPostingInfo", {})
+        description_html = info.get("jobDescription", "")
+        description = _strip_html(description_html)
+
+        return Job(
+            title=job.title,
+            url=job.url,
+            company=job.company,
+            ats_job_id=job.ats_job_id,
+            location=job.location,
+            department=info.get("jobCategory", {}).get("descriptor", ""),
+            description=description,
+            posted_date=job.posted_date,
+        )
+
+
+def _strip_html(html: str) -> str:
+    """Remove HTML tags and collapse whitespace."""
+    text = re.sub(r"<[^>]+>", " ", html)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()

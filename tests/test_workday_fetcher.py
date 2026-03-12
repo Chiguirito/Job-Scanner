@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.fetchers.workday import WorkdayConfig, WorkdayFetcher
+from src.fetchers.workday import WorkdayConfig, WorkdayFetcher, _strip_html
 from src.models import Job
 
 
@@ -15,6 +15,7 @@ def config() -> WorkdayConfig:
         base_url="https://testcorp.wd5.myworkdayjobs.com",
         site_path="/wday/cxs/testcorp/TestCorpSite",
         site_name="TestCorpSite",
+        fetch_descriptions=False,
     )
 
 
@@ -42,6 +43,15 @@ def _make_posting(
         "locationsText": location,
         "postedOn": "Posted Today",
         "bulletFields": [job_id],
+    }
+
+
+def _make_detail_response(description: str = "<p>Great job</p>", category: str = "Engineering") -> dict:
+    return {
+        "jobPostingInfo": {
+            "jobDescription": description,
+            "jobCategory": {"descriptor": category},
+        }
     }
 
 
@@ -118,7 +128,7 @@ class TestWorkdayFetcher:
 
         job = fetcher.fetch()[0]
 
-        assert job.url == "https://testcorp.wd5.myworkdayjobs.com/TestCorpSite/job/job/location/Engineer_JR001"
+        assert job.url == "https://testcorp.wd5.myworkdayjobs.com/TestCorpSite/job/location/Engineer_JR001"
 
     @patch("src.fetchers.workday.requests.post")
     def test_posting_without_bullet_fields_uses_external_path(
@@ -155,3 +165,60 @@ class TestWorkdayFetcher:
         assert payload["appliedFacets"] == {"jobFamilyGroup": ["abc123"]}
         assert payload["limit"] == 20
         assert payload["offset"] == 0
+
+
+class TestWorkdayFetcherWithDescriptions:
+    @patch("src.fetchers.workday.requests.get")
+    @patch("src.fetchers.workday.requests.post")
+    def test_fetch_enriches_with_description(
+        self, mock_post: MagicMock, mock_get: MagicMock, config: WorkdayConfig
+    ) -> None:
+        config.fetch_descriptions = True
+        fetcher = WorkdayFetcher(config)
+
+        posting = _make_posting(title="ML Engineer", job_id="JR042")
+        mock_post.return_value.json.return_value = _make_api_response([posting])
+        mock_post.return_value.raise_for_status = MagicMock()
+
+        mock_get.return_value.json.return_value = _make_detail_response(
+            "<p>Build <b>ML</b> models</p>", "Research"
+        )
+        mock_get.return_value.raise_for_status = MagicMock()
+
+        job = fetcher.fetch()[0]
+
+        assert "Build ML models" in job.description
+        assert job.department == "Research"
+
+    @patch("src.fetchers.workday.requests.get")
+    @patch("src.fetchers.workday.requests.post")
+    def test_fetch_handles_detail_failure_gracefully(
+        self, mock_post: MagicMock, mock_get: MagicMock, config: WorkdayConfig
+    ) -> None:
+        config.fetch_descriptions = True
+        fetcher = WorkdayFetcher(config)
+
+        posting = _make_posting(job_id="JR001")
+        mock_post.return_value.json.return_value = _make_api_response([posting])
+        mock_post.return_value.raise_for_status = MagicMock()
+
+        mock_get.side_effect = Exception("connection error")
+
+        job = fetcher.fetch()[0]
+
+        assert job.description == ""
+        assert job.ats_job_id == "JR001"
+
+
+class TestStripHtml:
+    def test_removes_tags(self) -> None:
+        assert _strip_html("<p>Hello <b>world</b></p>") == "Hello world"
+
+    def test_collapses_whitespace(self) -> None:
+        assert _strip_html("<p>Hello</p>  <p>world</p>") == "Hello world"
+
+    def test_empty_string(self) -> None:
+        assert _strip_html("") == ""
+
+    def test_plain_text_unchanged(self) -> None:
+        assert _strip_html("no tags here") == "no tags here"
