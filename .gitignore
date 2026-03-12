@@ -1,0 +1,14 @@
+# Environment
+.env
+
+# Data (local only)
+data/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS
+.DS_Store
