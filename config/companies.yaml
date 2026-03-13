@@ -18,3 +18,8 @@ companies:
     ats: greenhouse
     config:
       board_slug: "waymo"
+
+  - name: Wayve
+    ats: greenhouse
+    config:
+      board_slug: "wayve"

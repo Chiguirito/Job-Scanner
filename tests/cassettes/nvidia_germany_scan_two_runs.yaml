@@ -1,6 +1,6 @@
 interactions:
-- &id001
-  request:
+# ── Run 1 ─────────────────────────────────────────────────────────────────────
+- request:
     body: '{"limit": 20, "offset": 0, "searchText": ""}'
     headers:
       Accept:
@@ -70,8 +70,7 @@ interactions:
     status:
       code: 200
       message: OK
-- &id002
-  request:
+- request:
     body: null
     headers:
       Accept:
@@ -118,6 +117,101 @@ interactions:
     status:
       code: 200
       message: OK
-- *id001
-- *id002
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+    method: GET
+    uri: https://boards-api.greenhouse.io/v1/boards/wayve/jobs
+  response:
+    body:
+      string: '{"jobs": [{"id": 5001234, "title": "Senior ML Engineer", "absolute_url":
+        "https://job-boards.greenhouse.io/wayve/jobs/5001234", "location": {"name":
+        "London, United Kingdom"}, "departments": [{"id": 10, "name": "Engineering"}]}]}'
+    headers:
+      Content-Type:
+      - application/json
+    status:
+      code: 200
+      message: OK
+# ── Run 2 (no description fetches — all jobs already in store) ────────────────
+- request:
+    body: '{"limit": 20, "offset": 0, "searchText": ""}'
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+    method: POST
+    uri: https://nvidia.wd5.myworkdayjobs.com/wday/cxs/nvidia/NVIDIAExternalCareerSite/jobs
+  response:
+    body:
+      string: '{"total":3,"jobPostings":[{"title":"Senior Software Engineer","externalPath":"/job/Germany-Munich/Senior-Software-Engineer_JR1234567","locationsText":"Germany,
+        Munich","postedOn":"Posted Today","bulletFields":["JR1234567"]},{"title":"ML
+        Research Scientist","externalPath":"/job/Germany-Berlin/ML-Research-Scientist_JR7654321","locationsText":"Germany,
+        Berlin","postedOn":"Posted 2 Days Ago","bulletFields":["JR7654321"]},{"title":"Product
+        Manager","externalPath":"/job/USA-California/Product-Manager_JR9999999","locationsText":"USA,
+        California, Santa Clara","postedOn":"Posted Today","bulletFields":["JR9999999"]}]}'
+    headers:
+      Content-Type:
+      - application/json;charset=UTF-8
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+    method: GET
+    uri: https://boards-api.greenhouse.io/v1/boards/waymo/jobs
+  response:
+    body:
+      string: '{"jobs": [{"id": 7028592, "title": "Senior Software Engineer", "absolute_url":
+        "https://careers.withwaymo.com/jobs/7028592", "location": {"name": "Munich,
+        Germany"}, "departments": [{"id": 1, "name": "Engineering"}]}, {"id": 7028594,
+        "title": "Product Manager", "absolute_url": "https://careers.withwaymo.com/jobs/7028594",
+        "location": {"name": "Mountain View, CA"}, "departments": [{"id": 3, "name":
+        "Product"}]}]}'
+    headers:
+      Content-Type:
+      - application/json
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+    method: GET
+    uri: https://boards-api.greenhouse.io/v1/boards/wayve/jobs
+  response:
+    body:
+      string: '{"jobs": [{"id": 5001234, "title": "Senior ML Engineer", "absolute_url":
+        "https://job-boards.greenhouse.io/wayve/jobs/5001234", "location": {"name":
+        "London, United Kingdom"}, "departments": [{"id": 10, "name": "Engineering"}]}]}'
+    headers:
+      Content-Type:
+      - application/json
+    status:
+      code: 200
+      message: OK
 version: 1
