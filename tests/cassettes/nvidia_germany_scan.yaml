@@ -1,0 +1,72 @@
+interactions:
+- request:
+    body: '{"limit": 20, "offset": 0, "searchText": ""}'
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+    method: POST
+    uri: https://nvidia.wd5.myworkdayjobs.com/wday/cxs/nvidia/NVIDIAExternalCareerSite/jobs
+  response:
+    body:
+      string: '{"total":3,"jobPostings":[{"title":"Senior Software Engineer","externalPath":"/job/Germany-Munich/Senior-Software-Engineer_JR1234567","locationsText":"Germany,
+        Munich","postedOn":"Posted Today","bulletFields":["JR1234567"]},{"title":"ML
+        Research Scientist","externalPath":"/job/Germany-Berlin/ML-Research-Scientist_JR7654321","locationsText":"Germany,
+        Berlin","postedOn":"Posted 2 Days Ago","bulletFields":["JR7654321"]},{"title":"Product
+        Manager","externalPath":"/job/USA-California/Product-Manager_JR9999999","locationsText":"USA,
+        California, Santa Clara","postedOn":"Posted Today","bulletFields":["JR9999999"]}]}'
+    headers:
+      Content-Type:
+      - application/json;charset=UTF-8
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+    method: GET
+    uri: https://nvidia.wd5.myworkdayjobs.com/wday/cxs/nvidia/NVIDIAExternalCareerSite/job/Germany-Munich/Senior-Software-Engineer_JR1234567
+  response:
+    body:
+      string: '{"jobPostingInfo":{"jobDescription":"<p>We are looking for a <b>Senior
+        Software Engineer</b> to join our Munich team.</p><ul><li>5+ years Python</li><li>CUDA
+        experience preferred</li></ul>","jobCategory":{"descriptor":"Engineering"}}}'
+    headers:
+      Content-Type:
+      - application/json;charset=UTF-8
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+    method: GET
+    uri: https://nvidia.wd5.myworkdayjobs.com/wday/cxs/nvidia/NVIDIAExternalCareerSite/job/Germany-Berlin/ML-Research-Scientist_JR7654321
+  response:
+    body:
+      string: '{"jobPostingInfo":{"jobDescription":"<p>Join our <b>ML Research</b>
+        team in Berlin.</p><p>Requirements: PhD in ML, PyTorch expertise.</p>","jobCategory":{"descriptor":"Research"}}}'
+    headers:
+      Content-Type:
+      - application/json;charset=UTF-8
+    status:
+      code: 200
+      message: OK
+version: 1

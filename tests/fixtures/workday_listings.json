@@ -1,0 +1,26 @@
+{
+  "total": 2,
+  "jobPostings": [
+    {
+      "title": "Senior Software Engineer",
+      "externalPath": "/job/Germany-Munich/Senior-Software-Engineer_JR1234567",
+      "locationsText": "Germany, Munich",
+      "postedOn": "Posted Today",
+      "bulletFields": ["JR1234567"]
+    },
+    {
+      "title": "ML Research Scientist",
+      "externalPath": "/job/Germany-Berlin/ML-Research-Scientist_JR7654321",
+      "locationsText": "Germany, Berlin",
+      "postedOn": "Posted 2 Days Ago",
+      "bulletFields": ["JR7654321"]
+    },
+    {
+      "title": "Product Manager",
+      "externalPath": "/job/USA-California/Product-Manager_JR9999999",
+      "locationsText": "USA, California, Santa Clara",
+      "postedOn": "Posted Today",
+      "bulletFields": ["JR9999999"]
+    }
+  ]
+}

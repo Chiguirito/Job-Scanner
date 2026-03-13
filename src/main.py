@@ -8,7 +8,7 @@ import yaml
 from src.fetchers import FETCHER_TYPES
 from src.fetchers.workday import WorkdayConfig
 from src.models import Job
-from src.store import JobStore
+from src.store import DEFAULT_DB_PATH, JobStore
 
 logging.basicConfig(
     level=logging.INFO,
@@ -67,11 +67,11 @@ def filter_by_region(
     return list(filtered_jobs), list(filtered_postings)
 
 
-def main() -> None:
-    config = load_config()
+def main(config_path: Path = CONFIG_PATH, db_path: Path = DEFAULT_DB_PATH) -> None:
+    config = load_config(config_path)
     regions = config.get("regions", [])
     companies = config.get("companies", [])
-    store = JobStore()
+    store = JobStore(db_path)
 
     if regions:
         logger.info("Region filter: %s", regions)
