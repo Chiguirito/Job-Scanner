@@ -3,6 +3,7 @@ from __future__ import annotations
 import html
 import logging
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Any
 
@@ -13,7 +14,8 @@ from src.models import Job
 
 logger = logging.getLogger(__name__)
 
-BATCH_SIZE = 20  # Workday API maximum per request
+BATCH_SIZE = 20        # Workday API maximum per request
+PAGINATION_WORKERS = 5  # concurrent page fetches per company
 
 
 @dataclass
@@ -59,33 +61,30 @@ class WorkdayFetcher(BaseFetcher):
         return [self._enrich_with_description(j, p) for j, p in zip(jobs, raw_postings)]
 
     def _fetch_all_postings(self) -> list[dict[str, Any]]:
-        """Paginate through the Workday jobs endpoint."""
-        postings: list[dict[str, Any]] = []
-        offset = 0
-        total_limit = self.config.limit
-        total: int | None = None
+        """Paginate through the Workday jobs endpoint using concurrent page fetches.
 
-        while True:
-            batch = self._fetch_page(offset)
-            page_postings = batch.get("jobPostings", [])
+        Fetches the first page to discover the total count, then fires all
+        remaining pages in parallel to minimise wall-clock time.
+        """
+        first = self._fetch_page(0)
+        postings: list[dict[str, Any]] = first.get("jobPostings", [])
+        total = first.get("total", 0)
 
-            # Capture total from first page only (later pages may return 0)
-            if total is None:
-                total = batch.get("total", 0)
+        if not postings or len(postings) >= total:
+            logger.info("Fetched %d jobs from %s", len(postings), self.config.company)
+            return postings
 
-            if not page_postings:
-                break
+        remaining_offsets = range(len(postings), total, BATCH_SIZE)
+        if self.config.limit:
+            remaining_offsets = [o for o in remaining_offsets if o < self.config.limit]
 
-            postings.extend(page_postings)
-            offset += len(page_postings)
+        with ThreadPoolExecutor(max_workers=PAGINATION_WORKERS) as executor:
+            futures = [executor.submit(self._fetch_page, offset) for offset in remaining_offsets]
+            for future in as_completed(futures):
+                postings.extend(future.result().get("jobPostings", []))
 
-            logger.debug("Fetched %d/%d jobs from %s", len(postings), total, self.config.company)
-
-            if offset >= total:
-                break
-            if total_limit and len(postings) >= total_limit:
-                postings = postings[:total_limit]
-                break
+        if self.config.limit:
+            postings = postings[: self.config.limit]
 
         logger.info("Fetched %d jobs from %s", len(postings), self.config.company)
         return postings

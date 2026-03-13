@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import yaml
@@ -17,6 +18,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 CONFIG_PATH = Path("config/companies.yaml")
+COMPANY_WORKERS = 8
 
 
 def load_config(path: Path = CONFIG_PATH) -> dict:
@@ -67,6 +69,40 @@ def filter_by_region(
     return list(filtered_jobs), list(filtered_postings)
 
 
+def process_company(
+    company_cfg: dict,
+    regions: list[str],
+    known_keys: set[str],
+) -> tuple[str, list[Job], list[Job], set[str]]:
+    """Fetch, filter, and enrich one company's jobs. Pure I/O — no store access.
+
+    Returns (company_name, enriched_new_jobs, seen_jobs, active_keys).
+    Descriptions are fetched only for jobs absent from known_keys, so repeat
+    runs skip description fetches for already-stored listings.
+    """
+    name = company_cfg["name"]
+    fetcher = build_fetcher(company_cfg)
+
+    jobs, raw_postings = fetcher.fetch_listings()
+    logger.info("Found %d total listings for %s", len(jobs), name)
+
+    jobs, raw_postings = filter_by_region(jobs, raw_postings, regions)
+    logger.info("%d listings after region filter for %s", len(jobs), name)
+
+    active_keys = {j.unique_key for j in jobs}
+    raw_by_key = {j.unique_key: r for j, r in zip(jobs, raw_postings)}
+
+    new_jobs = [j for j in jobs if j.unique_key not in known_keys]
+    seen_jobs = [j for j in jobs if j.unique_key in known_keys]
+
+    if new_jobs:
+        new_raw = [raw_by_key[j.unique_key] for j in new_jobs]
+        new_jobs = fetcher.enrich_descriptions(new_jobs, new_raw)
+        logger.info("Fetched descriptions for %d new jobs at %s", len(new_jobs), name)
+
+    return name, new_jobs, seen_jobs, active_keys
+
+
 def main(config_path: Path = CONFIG_PATH, db_path: Path = DEFAULT_DB_PATH) -> None:
     config = load_config(config_path)
     regions = config.get("regions", [])
@@ -76,34 +112,25 @@ def main(config_path: Path = CONFIG_PATH, db_path: Path = DEFAULT_DB_PATH) -> No
     if regions:
         logger.info("Region filter: %s", regions)
 
-    for company_cfg in companies:
-        name = company_cfg["name"]
-        logger.info("Scanning %s...", name)
+    # Snapshot of known keys before this run — passed to threads so they can
+    # determine which jobs are new without accessing the store concurrently.
+    known_keys = store.get_all_known_keys()
 
-        fetcher = build_fetcher(company_cfg)
+    workers = min(len(companies), COMPANY_WORKERS)
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = {
+            executor.submit(process_company, cfg, regions, known_keys): cfg
+            for cfg in companies
+        }
+        for future in as_completed(futures):
+            name, new_jobs, seen_jobs, active_keys = future.result()
 
-        # 1. Fetch listings (fast — no descriptions)
-        jobs, raw_postings = fetcher.fetch_listings()
-        logger.info("Found %d total listings for %s", len(jobs), name)
+            store.save(new_jobs + seen_jobs)
+            closed = store.mark_closed(name, active_keys)
 
-        # 2. Filter by region
-        jobs, raw_postings = filter_by_region(jobs, raw_postings, regions)
-        logger.info("%d listings after region filter", len(jobs))
-
-        # 3. Fetch descriptions only for filtered jobs
-        if jobs:
-            jobs = fetcher.enrich_descriptions(jobs, raw_postings)
-            logger.info("Fetched descriptions for %d jobs", len(jobs))
-
-        # 4. Store and dedup
-        new_jobs = store.filter_new(jobs)
-        logger.info("%d new jobs for %s", len(new_jobs), name)
-
-        # 5. Mark closed listings
-        active_keys = {j.unique_key for j in jobs}
-        closed = store.mark_closed(name, active_keys)
-        if closed:
-            logger.info("%d listings closed for %s", len(closed), name)
+            logger.info("%d new jobs for %s", len(new_jobs), name)
+            if closed:
+                logger.info("%d listings closed for %s", len(closed), name)
 
     logger.info(
         "Done. Total: %d jobs (%d active)",
