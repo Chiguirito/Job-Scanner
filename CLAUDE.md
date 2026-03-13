@@ -59,18 +59,38 @@ fetch_listings()          # paginated API calls, no descriptions yet
 - Read env vars at call time, not at import time, so tests can patch them easily.
 
 ## Testing conventions
-- Run `pytest` before every commit.
-- All external HTTP calls must be mocked with `unittest.mock.patch`.
+
+### Pyramid
+Three layers — all live in `tests/`, all run on every commit except `@pytest.mark.live`:
+
+| Layer | Folder | What it tests | HTTP |
+|---|---|---|---|
+| Unit | `tests/unit/` | Single class/function in isolation | Mocked via `unittest.mock.patch` |
+| Integration | `tests/integration/` | Multiple modules wired together | Fixture JSON files (no network) |
+| E2E recorded | `tests/e2e/` | Full `main()` pipeline | `vcrpy` cassettes (recorded once, replayed) |
+| E2E live | `tests/e2e/` | Same, against real endpoints | Real network — mark `@pytest.mark.live` |
+
+Run all non-live tests: `pytest`
+Run live tests only: `pytest -m live`
+
+### Rules
+- Unit tests mock all external I/O (`requests`, filesystem, env vars).
+- Integration tests use realistic JSON fixture files stored in `tests/fixtures/`; no mocking of business logic.
+- E2E recorded tests use `vcrpy` cassettes stored in `tests/cassettes/`; re-record with `VCR_RECORD=all pytest tests/e2e/`.
+- Live tests are excluded from CI; use them manually to detect upstream API changes.
 - Use the `tmp_path` pytest fixture for any file or database I/O.
-- Tests live in `tests/`; mirror the `src/` module structure for test file names.
+- Mirror `src/` module names for test files (e.g. `src/store.py` → `tests/unit/test_store.py`).
 
 ## Dev commands & environment
 ```bash
 # Setup
 python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
 
-# Run tests
+# Run all tests (unit + integration + E2E recorded)
 pytest
+
+# Run live E2E tests (requires network + real API access)
+pytest -m live
 
 # Run scanner
 python src/main.py
