@@ -7,6 +7,7 @@ from pathlib import Path
 import yaml
 
 from src.fetchers import FETCHER_TYPES
+from src.fetchers.greenhouse import GreenhouseConfig
 from src.fetchers.workday import WorkdayConfig
 from src.models import Job
 from src.store import DEFAULT_DB_PATH, JobStore
@@ -41,6 +42,12 @@ def build_fetcher(company_cfg: dict):
             applied_facets=cfg.get("applied_facets"),
             fetch_descriptions=False,  # descriptions fetched separately after filtering
         )
+    elif ats == "greenhouse":
+        config = GreenhouseConfig(
+            company=company_cfg["name"],
+            board_slug=cfg["board_slug"],
+            fetch_descriptions=False,  # descriptions fetched separately after filtering
+        )
     else:
         raise ValueError(f"Unknown ATS type: {ats}")
 
@@ -52,16 +59,17 @@ def filter_by_region(
     raw_postings: list[dict],
     region_prefixes: list[str],
 ) -> tuple[list[Job], list[dict]]:
-    """Keep only jobs whose location matches any region prefix.
+    """Keep only jobs whose location contains any region term (case-insensitive).
 
-    Returns filtered (jobs, raw_postings) in parallel.
+    Supports both "Germany, Munich" (Workday) and "Munich, Germany" (Greenhouse)
+    location formats. Returns filtered (jobs, raw_postings) in parallel.
     """
     if not region_prefixes:
         return jobs, raw_postings
     filtered = [
         (job, posting)
         for job, posting in zip(jobs, raw_postings)
-        if any(job.location.startswith(prefix) for prefix in region_prefixes)
+        if any(prefix.lower() in job.location.lower() for prefix in region_prefixes)
     ]
     if not filtered:
         return [], []

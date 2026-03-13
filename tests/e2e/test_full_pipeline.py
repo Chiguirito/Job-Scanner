@@ -23,9 +23,9 @@ class TestFullPipeline:
 
         store = JobStore(db_path=db_path)
         try:
-            # 3 total listings but only 2 are in Germany — region filter applied
-            assert store.count() == 2
-            assert store.count(active_only=True) == 2
+            # NVIDIA: 2 Germany jobs; Waymo: 1 Germany job; 1 US job filtered out per company
+            assert store.count() == 3
+            assert store.count(active_only=True) == 3
         finally:
             store.close()
 
@@ -40,7 +40,7 @@ class TestFullPipeline:
 
         store = JobStore(db_path=db_path)
         try:
-            assert store.count() == 2
+            assert store.count() == 3
         finally:
             store.close()
 
