@@ -32,10 +32,10 @@ data/
 ### Pipeline (per company, each run)
 ```
 fetch_listings()          # paginated API calls, no descriptions yet
-  → filter_by_region()   # drop jobs outside configured regions
-  → enrich_descriptions() # fetch full JDs only for filtered jobs
-  → store.filter_new()   # deduplicate; save all; return only new ones
+  → store.filter_new()   # save all jobs (all regions) to DB
   → store.mark_closed()  # mark jobs absent from this scan as inactive
+  → filter_by_region()   # narrow to configured regions for description fetching
+  → enrich_descriptions() # fetch full JDs only for region-filtered jobs
   → scorer (pending)     # score new jobs against config/profile.md
   → notifier (pending)   # email digest of matches above score threshold
 ```

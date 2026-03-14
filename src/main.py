@@ -93,24 +93,23 @@ def main(config_path: Path = CONFIG_PATH, db_path: Path = DEFAULT_DB_PATH) -> No
         jobs, raw_postings = fetcher.fetch_listings()
         logger.info("Found %d total listings for %s", len(jobs), name)
 
-        # 2. Filter by region
-        jobs, raw_postings = filter_by_region(jobs, raw_postings, regions)
-        logger.info("%d listings after region filter", len(jobs))
-
-        # 3. Fetch descriptions only for filtered jobs
-        if jobs:
-            jobs = fetcher.enrich_descriptions(jobs, raw_postings)
-            logger.info("Fetched descriptions for %d jobs", len(jobs))
-
-        # 4. Store and dedup
-        new_jobs = store.filter_new(jobs)
-        logger.info("%d new jobs for %s", len(new_jobs), name)
-
-        # 5. Mark closed listings
+        # 2. Store all jobs and mark closed listings before region filtering
+        store.filter_new(jobs)
         active_keys = {j.unique_key for j in jobs}
         closed = store.mark_closed(name, active_keys)
         if closed:
             logger.info("%d listings closed for %s", len(closed), name)
+
+        # 3. Filter by region for description fetching
+        regional_jobs, regional_postings = filter_by_region(jobs, raw_postings, regions)
+        logger.info("%d listings match region filter", len(regional_jobs))
+
+        # 4. Fetch descriptions only for region-filtered jobs
+        if regional_jobs:
+            enriched = fetcher.enrich_descriptions(regional_jobs, regional_postings)
+            new_jobs = store.filter_new(enriched)
+            logger.info("%d new jobs for %s", len(new_jobs), name)
+            logger.info("Fetched descriptions for %d jobs", len(enriched))
 
     logger.info(
         "Done. Total: %d jobs (%d active)",
