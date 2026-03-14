@@ -30,9 +30,10 @@ class TestFullPipeline:
 
         store = JobStore(db_path=db_path)
         try:
-            # NVIDIA: 2 Germany jobs; Waymo: 1 Germany job; 1 US job filtered out per company
-            assert store.count() == 3
-            assert store.count(active_only=True) == 3
+            # All jobs stored regardless of region:
+            # NVIDIA: 3 (2 Germany + 1 USA); Waymo: 2; Wayve: 1
+            assert store.count() == 6
+            assert store.count(active_only=True) == 6
         finally:
             store.close()
 
@@ -50,7 +51,7 @@ class TestFullPipeline:
 
         store = JobStore(db_path=db_path)
         try:
-            assert store.count() == 3
+            assert store.count() == 6
         finally:
             store.close()
 

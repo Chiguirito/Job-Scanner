@@ -88,12 +88,15 @@ def process_company(
     company_cfg: dict,
     regions: list[str],
     known_keys: set[str],
-) -> tuple[str, list[Job], list[Job], set[str]]:
+) -> tuple[str, list[Job], set[str]]:
     """Fetch, filter, and enrich one company's jobs. Pure I/O — no store access.
 
-    Returns (company_name, enriched_regional_new_jobs, all_seen_jobs, all_active_keys).
-    All jobs are stored regardless of region. Descriptions are fetched only for
-    region-matched new jobs, skipping already-stored listings.
+    Storage design:
+    - ALL jobs (every region) are returned for storage so the DB is a complete mirror.
+    - Descriptions are fetched only for region-matched NEW jobs to avoid unnecessary
+      API calls. Already-stored jobs and out-of-region jobs are saved without descriptions.
+
+    Returns (company_name, all_jobs_with_enriched_descriptions_where_applicable, all_active_keys).
     """
     name = company_cfg["name"]
     fetcher = build_fetcher(company_cfg)
@@ -101,23 +104,22 @@ def process_company(
     jobs, raw_postings = fetcher.fetch_listings()
     logger.info("Found %d total listings for %s", len(jobs), name)
 
-    # Track all active keys globally (not region-filtered)
     all_active_keys = {j.unique_key for j in jobs}
-    all_seen_jobs = [j for j in jobs if j.unique_key in known_keys]
 
-    # Filter by region only for description fetching
+    # Fetch descriptions only for region-matched new jobs
     regional_jobs, regional_postings = filter_by_region(jobs, raw_postings, regions)
     logger.info("%d listings match region filter for %s", len(regional_jobs), name)
 
-    raw_by_key = {j.unique_key: r for j, r in zip(regional_jobs, regional_postings)}
-    new_regional_jobs = [j for j in regional_jobs if j.unique_key not in known_keys]
+    new_regional_keys = {j.unique_key for j in regional_jobs if j.unique_key not in known_keys}
+    if new_regional_keys:
+        new_regional = [j for j in regional_jobs if j.unique_key in new_regional_keys]
+        new_raw = [r for j, r in zip(regional_jobs, regional_postings) if j.unique_key in new_regional_keys]
+        enriched = fetcher.enrich_descriptions(new_regional, new_raw)
+        logger.info("Fetched descriptions for %d new jobs at %s", len(enriched), name)
+        enriched_by_key = {j.unique_key: j for j in enriched}
+        jobs = [enriched_by_key.get(j.unique_key, j) for j in jobs]
 
-    if new_regional_jobs:
-        new_raw = [raw_by_key[j.unique_key] for j in new_regional_jobs]
-        new_regional_jobs = fetcher.enrich_descriptions(new_regional_jobs, new_raw)
-        logger.info("Fetched descriptions for %d new jobs at %s", len(new_regional_jobs), name)
-
-    return name, new_regional_jobs, all_seen_jobs, all_active_keys
+    return name, jobs, all_active_keys
 
 
 def main(config_path: Path = CONFIG_PATH, db_path: Path = DEFAULT_DB_PATH) -> None:
@@ -140,12 +142,13 @@ def main(config_path: Path = CONFIG_PATH, db_path: Path = DEFAULT_DB_PATH) -> No
             for cfg in companies
         }
         for future in as_completed(futures):
-            name, new_jobs, seen_jobs, all_active_keys = future.result()
+            name, all_jobs, all_active_keys = future.result()
 
-            store.save(new_jobs + seen_jobs)
+            new_count = len([j for j in all_jobs if j.unique_key not in known_keys])
+            store.save(all_jobs)
             closed = store.mark_closed(name, all_active_keys)
 
-            logger.info("%d new jobs for %s", len(new_jobs), name)
+            logger.info("%d new jobs for %s", new_count, name)
             if closed:
                 logger.info("%d listings closed for %s", len(closed), name)
 

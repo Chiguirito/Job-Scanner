@@ -44,8 +44,9 @@ fetch_listings()          # paginated API calls, no descriptions yet
 ### Key data flow
 - `Job` (models.py) is a frozen dataclass — immutable after creation; enrichment returns a new instance.
 - `unique_key` = `"<company>::<ats_job_id>"` — stable dedup identifier across runs.
-- `JobStore.filter_new()` saves all seen jobs (updating `last_seen`) and returns only the new ones.
-- Region filter runs before description fetching to avoid unnecessary API calls.
+- `JobStore.save()` upserts jobs (inserts new, updates `last_seen` for existing).
+- Region filter applies only to description fetching — **all jobs from all regions are stored in the DB**.
+- Descriptions are fetched only for region-matched new jobs; already-stored and out-of-region jobs are saved without descriptions.
 
 ### Location matching
 `filter_by_region` uses case-insensitive substring matching so it works across ATS

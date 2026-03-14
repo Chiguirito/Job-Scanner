@@ -171,12 +171,14 @@ class TestProcessCompany:
                 "site_name": "NVIDIAExternalCareerSite",
             },
         }
-        name, new_jobs, seen_jobs, active_keys = process_company(company_cfg, ["Germany"], known_keys=set())
+        name, all_jobs, active_keys = process_company(company_cfg, ["Germany"], known_keys=set())
 
         assert name == "NVIDIA"
-        assert len(new_jobs) == 2
-        assert seen_jobs == []
-        assert all(j.description != "" for j in new_jobs)
+        # All 3 jobs stored (2 Germany + 1 USA); descriptions fetched only for 2 Germany new jobs
+        assert len(all_jobs) == 3
+        assert len(active_keys) == 3
+        germany_jobs = [j for j in all_jobs if "Germany" in j.location]
+        assert all(j.description != "" for j in germany_jobs)
         assert mock_get.call_count == 2
 
     @patch("src.fetchers.workday.requests.get")
@@ -201,8 +203,8 @@ class TestProcessCompany:
         }
         # Both Germany jobs are already known
         known_keys = {"NVIDIA::JR1234567", "NVIDIA::JR7654321"}
-        name, new_jobs, seen_jobs, active_keys = process_company(company_cfg, ["Germany"], known_keys=known_keys)
+        name, all_jobs, active_keys = process_company(company_cfg, ["Germany"], known_keys=known_keys)
 
-        assert new_jobs == []
-        assert len(seen_jobs) == 2
-        mock_get.assert_not_called()  # no description fetches for known jobs
+        # All 3 jobs still returned; no description fetches since Germany jobs are already known
+        assert len(all_jobs) == 3
+        mock_get.assert_not_called()
