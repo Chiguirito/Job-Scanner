@@ -1,0 +1,20 @@
+regions:
+  - "Germany"
+
+companies:
+  - name: NVIDIA
+    ats: workday
+    config:
+      base_url: "https://nvidia.wd5.myworkdayjobs.com"
+      site_path: "/wday/cxs/nvidia/NVIDIAExternalCareerSite"
+      site_name: "NVIDIAExternalCareerSite"
+
+  - name: Waymo
+    ats: greenhouse
+    config:
+      board_slug: "waymo"
+
+  - name: Wayve
+    ats: greenhouse
+    config:
+      board_slug: "wayve"

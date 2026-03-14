@@ -20,7 +20,7 @@ class TestFullPipeline:
 
     @vcr.use_cassette("nvidia_germany_scan.yaml")
     def test_nvidia_germany_scan_stores_jobs(self, tmp_path: Path) -> None:
-        config_path = Path("config/companies.yaml")
+        config_path = Path("tests/fixtures/companies_e2e.yaml")
         db_path = tmp_path / "jobs.db"
 
         with patch.multiple("src.main", COMPANY_WORKERS=1), patch.multiple(
@@ -40,7 +40,7 @@ class TestFullPipeline:
     @vcr.use_cassette("nvidia_germany_scan_two_runs.yaml")
     def test_second_run_marks_no_new_jobs(self, tmp_path: Path) -> None:
         """Running the pipeline twice should not produce new jobs on the second run."""
-        config_path = Path("config/companies.yaml")
+        config_path = Path("tests/fixtures/companies_e2e.yaml")
         db_path = tmp_path / "jobs.db"
 
         with patch.multiple("src.main", COMPANY_WORKERS=1), patch.multiple(
