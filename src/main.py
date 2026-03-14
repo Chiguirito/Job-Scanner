@@ -7,6 +7,7 @@ from pathlib import Path
 import yaml
 
 from src.fetchers import FETCHER_TYPES
+from src.fetchers.google import GoogleConfig
 from src.fetchers.greenhouse import GreenhouseConfig
 from src.fetchers.workday import WorkdayConfig
 from src.models import Job
@@ -55,6 +56,8 @@ def build_fetcher(company_cfg: dict):
             board_slug=cfg["board_slug"],
             fetch_descriptions=False,  # descriptions fetched separately after filtering
         )
+    elif ats == "google":
+        config = GoogleConfig(company=company_cfg["name"])
     else:
         raise ValueError(f"Unknown ATS type: {ats}")
 

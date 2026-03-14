@@ -23,3 +23,7 @@ companies:
     ats: greenhouse
     config:
       board_slug: "wayve"
+
+  - name: Google
+    ats: google
+    config: {}
