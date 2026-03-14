@@ -10,9 +10,16 @@ from src.fetchers.workday import WorkdayConfig
 from src.models import Job
 from src.store import DEFAULT_DB_PATH, JobStore
 
+LOG_PATH = Path("logs/scan.log")
+LOG_PATH.parent.mkdir(exist_ok=True)
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s — %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(LOG_PATH),
+    ],
 )
 logger = logging.getLogger(__name__)
 
