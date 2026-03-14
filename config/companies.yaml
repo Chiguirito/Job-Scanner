@@ -1,5 +1,6 @@
 regions:
   - "Germany"
+  - "DE"
 
 companies:
   - name: NVIDIA
@@ -26,4 +27,8 @@ companies:
 
   - name: Google
     ats: google
+    config: {}
+
+  - name: Mercedes-Benz
+    ats: mercedesbenz
     config: {}

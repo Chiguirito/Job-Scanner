@@ -53,6 +53,8 @@ fetch_listings()          # paginated API calls, no descriptions yet
 location formats:
 - Workday: `"Germany, Munich"` → matches region `"Germany"`
 - Greenhouse: `"Munich, Germany"` → matches region `"Germany"`
+- Mercedes-Benz: `"Stuttgart, DE"` → matches region `"DE"`
+- Google: `"Berlin, Germany"` → matches region `"Germany"`
 
 ### Adding a new ATS
 1. Create `src/fetchers/<ats_name>.py` with a class subclassing `BaseFetcher`.
