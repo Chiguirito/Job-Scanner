@@ -101,6 +101,11 @@ class JobStore:
 
         return list(newly_closed)
 
+    def get_all_known_keys(self) -> set[str]:
+        """Return unique_keys of all jobs currently in the store."""
+        cursor = self._conn.execute("SELECT unique_key FROM jobs")
+        return {row[0] for row in cursor.fetchall()}
+
     def filter_new(self, jobs: Sequence[Job]) -> list[Job]:
         """Return only jobs not yet in the store, and save all of them."""
         new_jobs = [job for job in jobs if self.is_new(job)]

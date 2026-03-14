@@ -1,0 +1,28 @@
+{
+  "jobs": [
+    {
+      "id": 7028592,
+      "title": "Senior Software Engineer",
+      "absolute_url": "https://careers.withwaymo.com/jobs/7028592-senior-software-engineer",
+      "location": {"name": "Munich, Germany"},
+      "departments": [{"id": 1, "name": "Engineering"}],
+      "updated_at": "2026-03-01T00:00:00.000Z"
+    },
+    {
+      "id": 7028593,
+      "title": "ML Research Scientist",
+      "absolute_url": "https://careers.withwaymo.com/jobs/7028593-ml-research-scientist",
+      "location": {"name": "Berlin, Germany"},
+      "departments": [{"id": 2, "name": "Research"}],
+      "updated_at": "2026-03-02T00:00:00.000Z"
+    },
+    {
+      "id": 7028594,
+      "title": "Product Manager",
+      "absolute_url": "https://careers.withwaymo.com/jobs/7028594-product-manager",
+      "location": {"name": "Mountain View, CA"},
+      "departments": [{"id": 3, "name": "Product"}],
+      "updated_at": "2026-03-03T00:00:00.000Z"
+    }
+  ]
+}

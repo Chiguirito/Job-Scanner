@@ -17,9 +17,10 @@ src/
   scorer.py      — JobScorer: scores jobs for candidate fit using Claude API (not yet implemented)
   notifier.py    — Sends email digest of high-scoring matches (not yet implemented)
   fetchers/
-    base.py      — BaseFetcher abstract class (fetch_listings, enrich_descriptions)
-    workday.py   — WorkdayFetcher: paginates Workday CXS API, strips HTML from descriptions
-    __init__.py  — FETCHER_TYPES registry mapping ATS name → fetcher class
+    base.py        — BaseFetcher abstract class (fetch_listings, enrich_descriptions)
+    workday.py     — WorkdayFetcher: concurrent pagination of Workday CXS API
+    greenhouse.py  — GreenhouseFetcher: Greenhouse public board API (single GET for listings)
+    __init__.py    — FETCHER_TYPES registry mapping ATS name → fetcher class
 
 config/
   companies.yaml — Target companies: ATS type, API coords, optional search filters
@@ -46,11 +47,18 @@ fetch_listings()          # paginated API calls, no descriptions yet
 - `JobStore.filter_new()` saves all seen jobs (updating `last_seen`) and returns only the new ones.
 - Region filter runs before description fetching to avoid unnecessary API calls.
 
+### Location matching
+`filter_by_region` uses case-insensitive substring matching so it works across ATS
+location formats:
+- Workday: `"Germany, Munich"` → matches region `"Germany"`
+- Greenhouse: `"Munich, Germany"` → matches region `"Germany"`
+
 ### Adding a new ATS
 1. Create `src/fetchers/<ats_name>.py` with a class subclassing `BaseFetcher`.
 2. Implement `fetch_listings() -> tuple[list[Job], list[dict]]` and `enrich_descriptions()`.
 3. Register in `FETCHER_TYPES` in `src/fetchers/__init__.py`.
-4. Add a matching entry in `config/companies.yaml`.
+4. Add a `elif ats == "<ats_name>"` branch in `build_fetcher()` in `main.py`.
+5. Add a matching entry in `config/companies.yaml`.
 
 ## Architecture rules
 - New ATS fetchers must subclass `BaseFetcher` (`src/fetchers/base.py`) and register in `FETCHER_TYPES` (`src/fetchers/__init__.py`).

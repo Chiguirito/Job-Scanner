@@ -13,3 +13,13 @@ companies:
       # applied_facets:
       #   jobFamilyGroup:
       #     - "0c40f6bd1d8f10ae43ffaefd46dc7e78"  # Engineering
+
+  - name: Waymo
+    ats: greenhouse
+    config:
+      board_slug: "waymo"
+
+  - name: Wayve
+    ats: greenhouse
+    config:
+      board_slug: "wayve"

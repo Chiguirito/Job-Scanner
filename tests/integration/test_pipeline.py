@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.fetchers.workday import WorkdayConfig, WorkdayFetcher
-from src.main import filter_by_region
+from src.main import filter_by_region, process_company
 from src.store import JobStore
 
 FIXTURES = Path(__file__).parent.parent / "fixtures"
@@ -141,3 +141,68 @@ class TestFetchFilterStorePipeline:
         assert new_on_second_run == []
         assert store.count() == 2
         store.close()
+
+
+class TestProcessCompany:
+    """Integration tests for the process_company pipeline function."""
+
+    @patch("src.fetchers.workday.requests.get")
+    @patch("src.fetchers.workday.requests.post")
+    def test_new_jobs_get_descriptions(
+        self,
+        mock_post: MagicMock,
+        mock_get: MagicMock,
+        listings_response: dict,
+        detail_responses: dict,
+    ) -> None:
+        mock_post.return_value.json.return_value = listings_response
+        mock_post.return_value.raise_for_status = MagicMock()
+        mock_get.side_effect = [
+            MagicMock(json=MagicMock(return_value=detail_responses["JR1234567"]), raise_for_status=MagicMock()),
+            MagicMock(json=MagicMock(return_value=detail_responses["JR7654321"]), raise_for_status=MagicMock()),
+        ]
+
+        company_cfg = {
+            "name": "NVIDIA",
+            "ats": "workday",
+            "config": {
+                "base_url": "https://nvidia.wd5.myworkdayjobs.com",
+                "site_path": "/wday/cxs/nvidia/NVIDIAExternalCareerSite",
+                "site_name": "NVIDIAExternalCareerSite",
+            },
+        }
+        name, new_jobs, seen_jobs, active_keys = process_company(company_cfg, ["Germany"], known_keys=set())
+
+        assert name == "NVIDIA"
+        assert len(new_jobs) == 2
+        assert seen_jobs == []
+        assert all(j.description != "" for j in new_jobs)
+        assert mock_get.call_count == 2
+
+    @patch("src.fetchers.workday.requests.get")
+    @patch("src.fetchers.workday.requests.post")
+    def test_known_jobs_skip_description_fetch(
+        self,
+        mock_post: MagicMock,
+        mock_get: MagicMock,
+        listings_response: dict,
+    ) -> None:
+        mock_post.return_value.json.return_value = listings_response
+        mock_post.return_value.raise_for_status = MagicMock()
+
+        company_cfg = {
+            "name": "NVIDIA",
+            "ats": "workday",
+            "config": {
+                "base_url": "https://nvidia.wd5.myworkdayjobs.com",
+                "site_path": "/wday/cxs/nvidia/NVIDIAExternalCareerSite",
+                "site_name": "NVIDIAExternalCareerSite",
+            },
+        }
+        # Both Germany jobs are already known
+        known_keys = {"NVIDIA::JR1234567", "NVIDIA::JR7654321"}
+        name, new_jobs, seen_jobs, active_keys = process_company(company_cfg, ["Germany"], known_keys=known_keys)
+
+        assert new_jobs == []
+        assert len(seen_jobs) == 2
+        mock_get.assert_not_called()  # no description fetches for known jobs

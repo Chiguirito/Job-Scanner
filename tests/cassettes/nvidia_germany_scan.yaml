@@ -69,4 +69,73 @@ interactions:
     status:
       code: 200
       message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+    method: GET
+    uri: https://boards-api.greenhouse.io/v1/boards/waymo/jobs
+  response:
+    body:
+      string: '{"jobs": [{"id": 7028592, "title": "Senior Software Engineer", "absolute_url":
+        "https://careers.withwaymo.com/jobs/7028592", "location": {"name": "Munich,
+        Germany"}, "departments": [{"id": 1, "name": "Engineering"}]}, {"id": 7028594,
+        "title": "Product Manager", "absolute_url": "https://careers.withwaymo.com/jobs/7028594",
+        "location": {"name": "Mountain View, CA"}, "departments": [{"id": 3, "name":
+        "Product"}]}]}'
+    headers:
+      Content-Type:
+      - application/json
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+    method: GET
+    uri: https://boards-api.greenhouse.io/v1/boards/waymo/jobs/7028592
+  response:
+    body:
+      string: '{"id": 7028592, "title": "Senior Software Engineer", "content": "<p>Join
+        Waymo Munich as a <b>Senior Software Engineer</b>.</p>", "location": {"name":
+        "Munich, Germany"}, "departments": [{"id": 1, "name": "Engineering"}]}'
+    headers:
+      Content-Type:
+      - application/json
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+    method: GET
+    uri: https://boards-api.greenhouse.io/v1/boards/wayve/jobs
+  response:
+    body:
+      string: '{"jobs": [{"id": 5001234, "title": "Senior ML Engineer", "absolute_url":
+        "https://job-boards.greenhouse.io/wayve/jobs/5001234", "location": {"name":
+        "London, United Kingdom"}, "departments": [{"id": 10, "name": "Engineering"}]}]}'
+    headers:
+      Content-Type:
+      - application/json
+    status:
+      code: 200
+      message: OK
 version: 1

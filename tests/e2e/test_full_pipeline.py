@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -9,6 +10,9 @@ from src.main import main
 from src.store import JobStore
 
 CASSETTES = Path(__file__).parent.parent / "cassettes"
+
+# vcrpy is not thread-safe; run companies sequentially in E2E tests.
+_SEQUENTIAL = {"src.main.COMPANY_WORKERS": 1, "src.fetchers.workday.PAGINATION_WORKERS": 1}
 
 
 class TestFullPipeline:
@@ -19,13 +23,16 @@ class TestFullPipeline:
         config_path = Path("config/companies.yaml")
         db_path = tmp_path / "jobs.db"
 
-        main(config_path=config_path, db_path=db_path)
+        with patch.multiple("src.main", COMPANY_WORKERS=1), patch.multiple(
+            "src.fetchers.workday", PAGINATION_WORKERS=1
+        ):
+            main(config_path=config_path, db_path=db_path)
 
         store = JobStore(db_path=db_path)
         try:
-            # 3 total listings but only 2 are in Germany — region filter applied
-            assert store.count() == 2
-            assert store.count(active_only=True) == 2
+            # NVIDIA: 2 Germany jobs; Waymo: 1 Germany job; 1 US job filtered out per company
+            assert store.count() == 3
+            assert store.count(active_only=True) == 3
         finally:
             store.close()
 
@@ -35,12 +42,15 @@ class TestFullPipeline:
         config_path = Path("config/companies.yaml")
         db_path = tmp_path / "jobs.db"
 
-        main(config_path=config_path, db_path=db_path)
-        main(config_path=config_path, db_path=db_path)
+        with patch.multiple("src.main", COMPANY_WORKERS=1), patch.multiple(
+            "src.fetchers.workday", PAGINATION_WORKERS=1
+        ):
+            main(config_path=config_path, db_path=db_path)
+            main(config_path=config_path, db_path=db_path)
 
         store = JobStore(db_path=db_path)
         try:
-            assert store.count() == 2
+            assert store.count() == 3
         finally:
             store.close()
 

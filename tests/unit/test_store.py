@@ -137,3 +137,24 @@ class TestJobStoreClosedTracking:
         assert new == [job2]
         assert store.count() == 2
         assert store.count(active_only=True) == 2
+
+
+class TestGetAllKnownKeys:
+    def test_empty_store_returns_empty_set(self, store: JobStore) -> None:
+        assert store.get_all_known_keys() == set()
+
+    def test_returns_all_saved_keys(self, store: JobStore) -> None:
+        job1 = _make_job(job_id="1")
+        job2 = _make_job(company="Globex", job_id="2")
+        store.save([job1, job2])
+
+        keys = store.get_all_known_keys()
+
+        assert keys == {job1.unique_key, job2.unique_key}
+
+    def test_includes_inactive_jobs(self, store: JobStore) -> None:
+        job = _make_job(job_id="1")
+        store.save([job])
+        store.mark_closed("Acme", set())
+
+        assert job.unique_key in store.get_all_known_keys()
