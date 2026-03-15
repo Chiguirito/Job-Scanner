@@ -16,7 +16,7 @@ src/
   main.py        — Orchestrator: loads config, runs the pipeline per company
   models.py      — Job dataclass (plain data, no logic)
   store.py       — JobStore: SQLite persistence, deduplication, closed-listing tracking
-  scorer.py      — JobScorer: scores jobs for candidate fit using Claude API (not yet implemented)
+  scorer.py      — JobScorer: scores jobs for candidate fit using Claude API
   notifier.py    — Sends email digest of high-scoring matches (not yet implemented)
   fetchers/
     base.py        — BaseFetcher abstract class; single abstract method: fetch() -> list[Job]
@@ -29,7 +29,7 @@ src/
 
 config/
   companies.yaml — Target companies: ATS type, API coords, optional search filters
-  profile.md     — Candidate profile used by scorer for fit comparison (not yet created)
+  profile.md     — Candidate profile used by scorer; path set via CANDIDATE_PROFILE_PATH env var (keep outside repo)
 
 data/
   jobs.db        — SQLite database (gitignored, created at runtime)
@@ -131,7 +131,8 @@ python src/main.py
 
 ### Required environment variables
 See `.env.example` for the full list. Key variables:
-- `ANTHROPIC_API_KEY` — required by scorer (not yet implemented)
+- `ANTHROPIC_API_KEY` — required by scorer
+- `CANDIDATE_PROFILE_PATH` — path to candidate profile Markdown file (outside the repo)
 - `NOTIFY_EMAIL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` — required by notifier (not yet implemented)
 
 `data/` and `logs/` are gitignored and created at runtime; never commit them.
