@@ -39,4 +39,7 @@ companies:
 
   - name: BMW Group
     ats: bmw
+    # NOTE: bmwgroup.jobs is protected by Akamai bot detection that blocks cloud provider
+    # IP ranges (AWS/Azure/GCP). Live scans work from residential/self-hosted IPs but will
+    # return 0 jobs when run from GitHub Actions. To enable in CI, use a self-hosted runner.
     config: {}
