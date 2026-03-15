@@ -24,6 +24,7 @@ src/
     greenhouse.py  — GreenhouseFetcher: Greenhouse public board API (single GET for listings)
     google.py      — GoogleFetcher: Google Careers RSS feed (descriptions included inline)
     mercedesbenz.py — MercedesBenzFetcher: undocumented Mercedes-Benz JSON API (descriptions included inline)
+    volkswagen.py  — VolkswagenFetcher: Volkswagen Group SAP SuccessFactors RSS feed (descriptions included inline)
     __init__.py    — FETCHER_TYPES registry mapping ATS name → fetcher class
 
 config/
