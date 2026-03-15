@@ -10,6 +10,7 @@ from src.fetchers import FETCHER_TYPES
 from src.fetchers.google import GoogleConfig
 from src.fetchers.greenhouse import GreenhouseConfig
 from src.fetchers.mercedesbenz import MercedesBenzConfig
+from src.fetchers.volkswagen import VolkswagenConfig
 from src.fetchers.workday import WorkdayConfig
 from src.models import Job
 from src.store import DEFAULT_DB_PATH, JobStore
@@ -61,6 +62,8 @@ def build_fetcher(company_cfg: dict):
         config = GoogleConfig(company=company_cfg["name"])
     elif ats == "mercedesbenz":
         config = MercedesBenzConfig(company=company_cfg["name"])
+    elif ats == "volkswagen":
+        config = VolkswagenConfig(company=company_cfg["name"])
     else:
         raise ValueError(f"Unknown ATS type: {ats}")
 
