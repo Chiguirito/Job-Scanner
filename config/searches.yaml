@@ -1,0 +1,32 @@
+searches:
+  - name: Engineering Manager Germany
+    regions:
+      - Germany
+      - DE
+    profile_path: ~/private/profile.md
+    requirements:
+      hard:
+        salary_min: 150000
+        title_keywords:
+          - engineering manager
+          - head of engineering
+          - vp engineering
+      soft:
+        prefers_remote: true
+    notify: paul@bars.ch
+
+  # - name: Product Manager California
+  #   regions:
+  #     - California
+  #     - San Francisco
+  #     - Bay Area
+  #   profile_path: ~/private/profile_pm.md
+  #   requirements:
+  #     hard:
+  #       salary_min: 250000
+  #       title_keywords:
+  #         - product manager
+  #         - director of product
+  #     soft:
+  #       prefers_remote: false
+  #   notify: paul@bars.ch

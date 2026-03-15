@@ -14,9 +14,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```
 src/
   main.py        — Orchestrator: loads config, runs the pipeline per company
-  models.py      — Job dataclass (plain data, no logic)
-  store.py       — JobStore: SQLite persistence, deduplication, closed-listing tracking
-  scorer.py      — JobScorer: scores jobs for candidate fit using Claude API
+  models.py      — Job, SearchConfig, SearchScore, HardRequirements, SoftRequirements dataclasses (plain data, no logic)
+  store.py       — JobStore: SQLite persistence, deduplication, closed-listing tracking, search_scores table
+  scorer.py      — JobScorer: two-score funnel (fit + desirability) per SearchConfig
   notifier.py    — Sends email digest of high-scoring matches (not yet implemented)
   fetchers/
     base.py        — BaseFetcher abstract class; single abstract method: fetch() -> list[Job]
@@ -29,7 +29,7 @@ src/
 
 config/
   companies.yaml — Target companies: ATS type, API coords, optional search filters
-  profile.md     — Candidate profile used by scorer; path set via CANDIDATE_PROFILE_PATH env var (keep outside repo)
+  searches.yaml  — Named search configs: regions, requirements (hard/soft), profile path, notify target
 
 data/
   jobs.db        — SQLite database (gitignored, created at runtime)
@@ -38,8 +38,14 @@ logs/
   scan.log       — Scan log file (gitignored, created at runtime)
 ```
 
-### Pipeline (per company, each run)
-Companies are processed concurrently via `ThreadPoolExecutor` (up to 8 workers). Each `process_company` call is pure I/O with no store access — all store operations happen in the main thread after each future completes.
+### Pipelines
+There are two independent pipelines, both invoked via `src/main.py`:
+
+**Fetch pipeline** (`python src/main.py`) — populates the DB. Companies are processed concurrently via `ThreadPoolExecutor` (up to 8 workers). Each `process_company` call is pure I/O with no store access — all store operations happen in the main thread after each future completes.
+
+**Scoring pipeline** (`python src/main.py --score`) — runs after fetching. Each `SearchConfig` from `config/searches.yaml` is a separate pass over the DB: jobs are scored only if they have no `search_scores` row for that search, or if the `profile_hash` or `requirements_hash` has changed. Adding a new search automatically backfills all existing jobs on the next run.
+
+#### Fetch pipeline detail (per company)
 
 ```
 # Per company (process_company — no store access):
@@ -125,14 +131,21 @@ pytest tests/unit/test_store.py::test_save_upserts
 # Run live E2E tests (requires network + real API access)
 pytest -m live
 
-# Run scanner
+# Run fetch (populate DB)
 python src/main.py
+
+# Score all searches against the DB
+python src/main.py --score
+
+# Score a single search by name
+python src/main.py --score "Engineering Manager Germany"
 ```
 
 ### Required environment variables
 See `.env.example` for the full list. Key variables:
 - `ANTHROPIC_API_KEY` — required by scorer
-- `CANDIDATE_PROFILE_PATH` — path to candidate profile Markdown file (outside the repo)
+
+Candidate profile paths are configured per-search in `config/searches.yaml` (`profile_path` field). Keep profile files outside the repo.
 - `NOTIFY_EMAIL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` — required by notifier (not yet implemented)
 
 `data/` and `logs/` are gitignored and created at runtime; never commit them.
