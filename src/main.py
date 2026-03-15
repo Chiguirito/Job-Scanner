@@ -7,6 +7,7 @@ from pathlib import Path
 import yaml
 
 from src.fetchers import FETCHER_TYPES
+from src.fetchers.bmw import BMWConfig
 from src.fetchers.google import GoogleConfig
 from src.fetchers.greenhouse import GreenhouseConfig
 from src.fetchers.mercedesbenz import MercedesBenzConfig
@@ -42,7 +43,9 @@ def build_fetcher(company_cfg: dict):
     fetcher_cls = FETCHER_TYPES[ats]
     cfg = company_cfg["config"]
 
-    if ats == "workday":
+    if ats == "bmw":
+        config = BMWConfig(company=company_cfg["name"])
+    elif ats == "workday":
         config = WorkdayConfig(
             company=company_cfg["name"],
             base_url=cfg["base_url"],

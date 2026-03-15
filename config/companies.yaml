@@ -36,3 +36,7 @@ companies:
   - name: Volkswagen
     ats: volkswagen
     config: {}
+
+  - name: BMW Group
+    ats: bmw
+    config: {}

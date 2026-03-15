@@ -23,6 +23,7 @@ src/
     workday.py     — WorkdayFetcher: concurrent pagination of Workday CXS API
     greenhouse.py  — GreenhouseFetcher: Greenhouse public board API (single GET for listings)
     google.py      — GoogleFetcher: Google Careers RSS feed (descriptions included inline)
+    bmw.py         — BMWFetcher: bmwgroup.jobs AEM site — sitemap-driven, ~1000 pages fetched concurrently
     mercedesbenz.py — MercedesBenzFetcher: undocumented Mercedes-Benz JSON API (descriptions included inline)
     __init__.py    — FETCHER_TYPES registry mapping ATS name → fetcher class
 
