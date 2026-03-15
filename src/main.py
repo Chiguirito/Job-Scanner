@@ -12,7 +12,8 @@ from src.fetchers.greenhouse import GreenhouseConfig
 from src.fetchers.mercedesbenz import MercedesBenzConfig
 from src.fetchers.volkswagen import VolkswagenConfig
 from src.fetchers.workday import WorkdayConfig
-from src.models import Job
+from src.models import HardRequirements, Job, SearchConfig, SoftRequirements
+from src.scorer import JobScorer
 from src.store import DEFAULT_DB_PATH, JobStore
 
 LOG_PATH = Path("logs/scan.log")
@@ -29,12 +30,40 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 CONFIG_PATH = Path("config/companies.yaml")
+SEARCHES_CONFIG_PATH = Path("config/searches.yaml")
 COMPANY_WORKERS = 8
 
 
 def load_config(path: Path = CONFIG_PATH) -> dict:
     with open(path) as f:
         return yaml.safe_load(f)
+
+
+def load_searches(path: Path = SEARCHES_CONFIG_PATH) -> list[SearchConfig]:
+    with open(path) as f:
+        data = yaml.safe_load(f)
+    searches = []
+    for s in data.get("searches", []):
+        reqs = s.get("requirements", {})
+        hard_cfg = reqs.get("hard", {})
+        soft_cfg = reqs.get("soft", {})
+        searches.append(
+            SearchConfig(
+                name=s["name"],
+                regions=s.get("regions", []),
+                profile_path=s["profile_path"],
+                hard=HardRequirements(
+                    salary_min=hard_cfg.get("salary_min"),
+                    title_keywords=hard_cfg.get("title_keywords", []),
+                ),
+                soft=SoftRequirements(
+                    prefers_remote=soft_cfg.get("prefers_remote", False),
+                    preferred_industries=soft_cfg.get("preferred_industries", []),
+                ),
+                notify=s.get("notify", ""),
+            )
+        )
+    return searches
 
 
 def build_fetcher(company_cfg: dict):
@@ -131,17 +160,37 @@ def process_company(
     return name, jobs, all_active_keys
 
 
-def main(config_path: Path = CONFIG_PATH, db_path: Path = DEFAULT_DB_PATH) -> None:
+def score_search(search: SearchConfig, store: JobStore, scorer: JobScorer) -> None:
+    """Score all unscored (or stale) jobs for a single search config."""
+    p_hash = scorer.profile_hash(search)
+    r_hash = scorer.requirements_hash(search)
+
+    jobs = store.get_unscored_jobs_for_search(search.name, p_hash, r_hash, search.regions)
+    logger.info("Scoring %d jobs for search '%s'", len(jobs), search.name)
+
+    for job in jobs:
+        result = scorer.score(job, search)
+        store.save_score(result)
+        if result.hard_fail:
+            logger.debug("[%s] SKIP %s — %s", search.name, job.title, result.hard_fail_reason)
+        else:
+            logger.info(
+                "[%s] fit=%d desire=%d — %s @ %s",
+                search.name, result.fit_score, result.desirability_score,
+                job.title, job.company,
+            )
+
+    logger.info("Done scoring '%s' (%d jobs processed).", search.name, len(jobs))
+
+
+def _run_fetch(config_path: Path, store: JobStore) -> None:
     config = load_config(config_path)
     regions = config.get("regions", [])
     companies = config.get("companies", [])
-    store = JobStore(db_path)
 
     if regions:
         logger.info("Region filter: %s", regions)
 
-    # Snapshot of known keys before this run — passed to threads so they can
-    # determine which jobs are new without accessing the store concurrently.
     known_keys = store.get_all_known_keys()
 
     workers = min(len(companies), COMPANY_WORKERS)
@@ -166,8 +215,44 @@ def main(config_path: Path = CONFIG_PATH, db_path: Path = DEFAULT_DB_PATH) -> No
         store.count(),
         store.count(active_only=True),
     )
+
+
+def _run_scoring(target: str | None, searches_path: Path, store: JobStore) -> None:
+    searches = load_searches(searches_path)
+    if target is not None:
+        searches = [s for s in searches if s.name == target]
+        if not searches:
+            logger.error("No search named '%s' in %s", target, searches_path)
+            return
+    scorer = JobScorer()
+    for search in searches:
+        score_search(search, store, scorer)
+
+
+def main(
+    config_path: Path = CONFIG_PATH,
+    db_path: Path = DEFAULT_DB_PATH,
+    searches_path: Path = SEARCHES_CONFIG_PATH,
+    score: str | None = None,
+) -> None:
+    store = JobStore(db_path)
+    if score is not None:
+        _run_scoring(score if score != "__all__" else None, searches_path, store)
+    else:
+        _run_fetch(config_path, store)
     store.close()
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Job Scanner")
+    parser.add_argument(
+        "--score",
+        nargs="?",
+        const="__all__",
+        metavar="SEARCH_NAME",
+        help="Score jobs. Omit SEARCH_NAME to run all searches.",
+    )
+    args = parser.parse_args()
+    main(score=args.score)

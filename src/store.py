@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import json
 import sqlite3
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Sequence
 
-from src.models import Job
+from src.models import Job, SearchScore
 
 DEFAULT_DB_PATH = Path("data/jobs.db")
 
@@ -35,6 +36,24 @@ class JobStore:
                 first_seen  TEXT NOT NULL,
                 last_seen   TEXT NOT NULL,
                 is_active   INTEGER NOT NULL DEFAULT 1
+            )
+            """
+        )
+        self._conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS search_scores (
+                unique_key          TEXT NOT NULL,
+                search_name         TEXT NOT NULL,
+                fit_score           INTEGER NOT NULL,
+                desirability_score  INTEGER NOT NULL,
+                hard_fail           INTEGER NOT NULL,
+                hard_fail_reason    TEXT NOT NULL DEFAULT '',
+                score_detail        TEXT NOT NULL DEFAULT '{}',
+                stage_reached       INTEGER NOT NULL,
+                profile_hash        TEXT NOT NULL,
+                requirements_hash   TEXT NOT NULL,
+                scored_at           TEXT NOT NULL,
+                PRIMARY KEY (unique_key, search_name)
             )
             """
         )
@@ -119,6 +138,128 @@ class JobStore:
             query += " WHERE is_active = 1"
         cursor = self._conn.execute(query)
         return cursor.fetchone()[0]
+
+    def get_unscored_jobs_for_search(
+        self,
+        search_name: str,
+        profile_hash: str,
+        requirements_hash: str,
+        regions: list[str],
+    ) -> list[Job]:
+        """Return active jobs with descriptions not yet scored (or needing re-score) for this search.
+
+        A job needs scoring if it has no row in search_scores for this search, or if either
+        hash has changed since it was last scored (profile or requirements updated).
+        """
+        cursor = self._conn.execute(
+            """
+            SELECT j.unique_key, j.title, j.url, j.company, j.ats_job_id,
+                   j.location, j.department, j.description, j.posted_date,
+                   j.first_seen, j.last_seen, j.is_active
+            FROM jobs j
+            LEFT JOIN search_scores ss
+                ON j.unique_key = ss.unique_key AND ss.search_name = ?
+            WHERE j.is_active = 1
+              AND j.description != ''
+              AND (ss.unique_key IS NULL
+                   OR ss.profile_hash != ?
+                   OR ss.requirements_hash != ?)
+            """,
+            (search_name, profile_hash, requirements_hash),
+        )
+        jobs = [self._row_to_job(row) for row in cursor.fetchall()]
+        if not regions:
+            return jobs
+        return [j for j in jobs if any(r.lower() in j.location.lower() for r in regions)]
+
+    def save_score(self, score: SearchScore) -> None:
+        """Upsert a scoring result for a job/search pair."""
+        now = datetime.now(timezone.utc).isoformat()
+        self._conn.execute(
+            """
+            INSERT INTO search_scores
+                (unique_key, search_name, fit_score, desirability_score,
+                 hard_fail, hard_fail_reason, score_detail, stage_reached,
+                 profile_hash, requirements_hash, scored_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(unique_key, search_name) DO UPDATE SET
+                fit_score          = excluded.fit_score,
+                desirability_score = excluded.desirability_score,
+                hard_fail          = excluded.hard_fail,
+                hard_fail_reason   = excluded.hard_fail_reason,
+                score_detail       = excluded.score_detail,
+                stage_reached      = excluded.stage_reached,
+                profile_hash       = excluded.profile_hash,
+                requirements_hash  = excluded.requirements_hash,
+                scored_at          = excluded.scored_at
+            """,
+            (
+                score.unique_key, score.search_name,
+                score.fit_score, score.desirability_score,
+                int(score.hard_fail), score.hard_fail_reason,
+                json.dumps(score.score_detail), score.stage_reached,
+                score.profile_hash, score.requirements_hash, now,
+            ),
+        )
+        self._conn.commit()
+
+    def get_top_jobs_for_search(
+        self,
+        search_name: str,
+        min_fit: int = 60,
+        min_desirability: int = 60,
+        limit: int = 10,
+    ) -> list[tuple[Job, SearchScore]]:
+        """Return the highest-scoring non-failed jobs for a search, ordered by combined score."""
+        cursor = self._conn.execute(
+            """
+            SELECT j.unique_key, j.title, j.url, j.company, j.ats_job_id,
+                   j.location, j.department, j.description, j.posted_date,
+                   j.first_seen, j.last_seen, j.is_active,
+                   ss.fit_score, ss.desirability_score, ss.hard_fail,
+                   ss.hard_fail_reason, ss.score_detail, ss.stage_reached,
+                   ss.profile_hash, ss.requirements_hash, ss.scored_at
+            FROM jobs j
+            JOIN search_scores ss ON j.unique_key = ss.unique_key
+            WHERE ss.search_name = ?
+              AND ss.hard_fail = 0
+              AND ss.fit_score >= ?
+              AND ss.desirability_score >= ?
+            ORDER BY (ss.fit_score + ss.desirability_score) DESC
+            LIMIT ?
+            """,
+            (search_name, min_fit, min_desirability, limit),
+        )
+        results = []
+        for row in cursor.fetchall():
+            job = self._row_to_job(row)
+            score = SearchScore(
+                unique_key=row[0],
+                search_name=search_name,
+                fit_score=row[12],
+                desirability_score=row[13],
+                hard_fail=bool(row[14]),
+                hard_fail_reason=row[15] or "",
+                score_detail=json.loads(row[16]) if row[16] else {},
+                stage_reached=row[17],
+                profile_hash=row[18],
+                requirements_hash=row[19],
+                scored_at=row[20],
+            )
+            results.append((job, score))
+        return results
+
+    def _row_to_job(self, row: tuple) -> Job:
+        return Job(
+            title=row[1],
+            url=row[2],
+            company=row[3],
+            ats_job_id=row[4],
+            location=row[5] or "",
+            department=row[6] or "",
+            description=row[7] or "",
+            posted_date=date.fromisoformat(row[8]) if row[8] else None,
+        )
 
     def close(self) -> None:
         self._conn.close()

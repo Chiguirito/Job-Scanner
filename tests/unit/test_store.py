@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from src.models import Job
+from src.models import Job, SearchScore
 from src.store import JobStore
 
 
@@ -158,3 +158,131 @@ class TestGetAllKnownKeys:
         store.mark_closed("Acme", set())
 
         assert job.unique_key in store.get_all_known_keys()
+
+
+def _make_score(job: Job, search_name: str = "Test Search", **kwargs) -> SearchScore:
+    defaults = dict(
+        unique_key=job.unique_key,
+        search_name=search_name,
+        fit_score=75,
+        desirability_score=70,
+        hard_fail=False,
+        hard_fail_reason="",
+        score_detail={"fit_reasoning": "Good match."},
+        stage_reached=3,
+        profile_hash="abc123",
+        requirements_hash="def456",
+    )
+    defaults.update(kwargs)
+    return SearchScore(**defaults)
+
+
+class TestSearchScores:
+    def test_save_and_retrieve_top_jobs(self, store: JobStore) -> None:
+        job = _make_job(description="A great role.")
+        store.save([job])
+        store.save_score(_make_score(job, fit_score=80, desirability_score=75))
+
+        results = store.get_top_jobs_for_search("Test Search")
+        assert len(results) == 1
+        assert results[0][0].unique_key == job.unique_key
+        assert results[0][1].fit_score == 80
+
+    def test_upsert_updates_existing_score(self, store: JobStore) -> None:
+        job = _make_job(description="A role.")
+        store.save([job])
+        store.save_score(_make_score(job, fit_score=50))
+        store.save_score(_make_score(job, fit_score=90))
+
+        results = store.get_top_jobs_for_search("Test Search", min_fit=0, min_desirability=0)
+        assert len(results) == 1
+        assert results[0][1].fit_score == 90
+
+    def test_hard_fail_excluded_from_top_jobs(self, store: JobStore) -> None:
+        job = _make_job(description="A role.")
+        store.save([job])
+        store.save_score(_make_score(job, hard_fail=True, hard_fail_reason="Wrong title"))
+
+        results = store.get_top_jobs_for_search("Test Search", min_fit=0, min_desirability=0)
+        assert results == []
+
+    def test_top_jobs_ordered_by_combined_score(self, store: JobStore) -> None:
+        job_a = _make_job(job_id="A", description="Role A.")
+        job_b = _make_job(job_id="B", description="Role B.")
+        store.save([job_a, job_b])
+        store.save_score(_make_score(job_a, fit_score=60, desirability_score=60))  # sum=120
+        store.save_score(_make_score(job_b, fit_score=90, desirability_score=80))  # sum=170
+
+        results = store.get_top_jobs_for_search("Test Search", min_fit=0, min_desirability=0)
+        assert results[0][0].unique_key == job_b.unique_key
+
+    def test_top_jobs_respects_min_thresholds(self, store: JobStore) -> None:
+        job = _make_job(description="A role.")
+        store.save([job])
+        store.save_score(_make_score(job, fit_score=50, desirability_score=50))
+
+        assert store.get_top_jobs_for_search("Test Search", min_fit=60) == []
+
+    def test_get_unscored_returns_new_jobs(self, store: JobStore) -> None:
+        job = _make_job(description="A role.", location="Munich, Germany")
+        store.save([job])
+
+        unscored = store.get_unscored_jobs_for_search("Test Search", "p_hash", "r_hash", ["Germany"])
+        assert len(unscored) == 1
+        assert unscored[0].unique_key == job.unique_key
+
+    def test_get_unscored_skips_already_scored(self, store: JobStore) -> None:
+        job = _make_job(description="A role.", location="Munich, Germany")
+        store.save([job])
+        store.save_score(_make_score(job, profile_hash="p_hash", requirements_hash="r_hash"))
+
+        unscored = store.get_unscored_jobs_for_search("Test Search", "p_hash", "r_hash", ["Germany"])
+        assert unscored == []
+
+    def test_get_unscored_rescores_on_profile_change(self, store: JobStore) -> None:
+        job = _make_job(description="A role.", location="Munich, Germany")
+        store.save([job])
+        store.save_score(_make_score(job, profile_hash="old_hash", requirements_hash="r_hash"))
+
+        unscored = store.get_unscored_jobs_for_search("Test Search", "new_hash", "r_hash", ["Germany"])
+        assert len(unscored) == 1
+
+    def test_get_unscored_rescores_on_requirements_change(self, store: JobStore) -> None:
+        job = _make_job(description="A role.", location="Munich, Germany")
+        store.save([job])
+        store.save_score(_make_score(job, profile_hash="p_hash", requirements_hash="old_req"))
+
+        unscored = store.get_unscored_jobs_for_search("Test Search", "p_hash", "new_req", ["Germany"])
+        assert len(unscored) == 1
+
+    def test_get_unscored_skips_jobs_without_description(self, store: JobStore) -> None:
+        job = _make_job(description="", location="Munich, Germany")
+        store.save([job])
+
+        unscored = store.get_unscored_jobs_for_search("Test Search", "p_hash", "r_hash", ["Germany"])
+        assert unscored == []
+
+    def test_get_unscored_skips_inactive_jobs(self, store: JobStore) -> None:
+        job = _make_job(description="A role.", location="Munich, Germany")
+        store.save([job])
+        store.mark_closed("Acme", set())
+
+        unscored = store.get_unscored_jobs_for_search("Test Search", "p_hash", "r_hash", ["Germany"])
+        assert unscored == []
+
+    def test_get_unscored_filters_by_region(self, store: JobStore) -> None:
+        job_de = _make_job(job_id="1", description="A role.", location="Munich, Germany")
+        job_us = _make_job(job_id="2", description="A role.", location="San Francisco, US")
+        store.save([job_de, job_us])
+
+        unscored = store.get_unscored_jobs_for_search("Test Search", "p", "r", ["Germany"])
+        assert len(unscored) == 1
+        assert unscored[0].unique_key == job_de.unique_key
+
+    def test_get_unscored_no_region_filter_returns_all(self, store: JobStore) -> None:
+        job_de = _make_job(job_id="1", description="A role.", location="Munich, Germany")
+        job_us = _make_job(job_id="2", description="A role.", location="San Francisco, US")
+        store.save([job_de, job_us])
+
+        unscored = store.get_unscored_jobs_for_search("Test Search", "p", "r", [])
+        assert len(unscored) == 2
