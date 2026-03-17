@@ -43,7 +43,7 @@ There are two independent pipelines, both invoked via `src/main.py`:
 
 **Fetch pipeline** (`python src/main.py`) — populates the DB. Companies are processed concurrently via `ThreadPoolExecutor` (up to 8 workers). Each `process_company` call is pure I/O with no store access — all store operations happen in the main thread after each future completes.
 
-**Scoring pipeline** (`python src/main.py --score`) — runs after fetching. Each `SearchConfig` from `config/searches.yaml` is a separate pass over the DB: jobs are scored only if they have no `search_scores` row for that search, or if the `profile_hash` or `requirements_hash` has changed. Adding a new search automatically backfills all existing jobs on the next run.
+**Scoring pipeline** (`python src/main.py --score`) — runs after fetching. Each `SearchConfig` from `config/searches.yaml` is a separate pass over the DB: jobs are scored only if they have no `search_scores` row for that search, or if the `profile_hash` or `requirements_hash` has changed. Adding a new search automatically backfills all existing jobs on the next run. The LLM stage uses `claude-haiku-4-5-20251001` (hardcoded in `scorer.py`).
 
 #### Fetch pipeline detail (per company)
 
@@ -144,8 +144,8 @@ python src/main.py --score "Engineering Manager Germany"
 ### Required environment variables
 See `.env.example` for the full list. Key variables:
 - `ANTHROPIC_API_KEY` — required by scorer
+- `NOTIFY_EMAIL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` — required by notifier (not yet implemented)
 
 Candidate profile paths are configured per-search in `config/searches.yaml` (`profile_path` field). Keep profile files outside the repo.
-- `NOTIFY_EMAIL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` — required by notifier (not yet implemented)
 
 `data/` and `logs/` are gitignored and created at runtime; never commit them.
