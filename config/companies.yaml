@@ -36,3 +36,8 @@ companies:
   - name: Volkswagen
     ats: volkswagen
     config: {}
+
+  - name: BASF
+    ats: successfactors
+    config:
+      feed_url: "https://basf.jobs/sitemal.xml"

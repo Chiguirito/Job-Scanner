@@ -10,6 +10,7 @@ from src.fetchers import FETCHER_TYPES
 from src.fetchers.google import GoogleConfig
 from src.fetchers.greenhouse import GreenhouseConfig
 from src.fetchers.mercedesbenz import MercedesBenzConfig
+from src.fetchers.successfactors import SuccessFactorsConfig
 from src.fetchers.volkswagen import VolkswagenConfig
 from src.fetchers.workday import WorkdayConfig
 from src.models import HardRequirements, Job, SearchConfig, SoftRequirements
@@ -91,6 +92,11 @@ def build_fetcher(company_cfg: dict):
         config = GoogleConfig(company=company_cfg["name"])
     elif ats == "mercedesbenz":
         config = MercedesBenzConfig(company=company_cfg["name"])
+    elif ats == "successfactors":
+        config = SuccessFactorsConfig(
+            company=company_cfg["name"],
+            feed_url=cfg["feed_url"],
+        )
     elif ats == "volkswagen":
         config = VolkswagenConfig(company=company_cfg["name"])
     else:
