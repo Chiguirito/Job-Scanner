@@ -41,3 +41,28 @@ companies:
     ats: successfactors
     config:
       feed_url: "https://basf.jobs/sitemal.xml"
+
+  - name: BMW Group
+    ats: successfactors
+    config:
+      feed_url: "https://jobs.bmwgroup.com/sitemal.xml"
+
+  - name: SAP
+    ats: successfactors
+    config:
+      feed_url: "https://jobs.sap.com/sitemal.xml"
+
+  - name: Bayer
+    ats: successfactors
+    config:
+      feed_url: "https://jobs.bayer.com/sitemal.xml"
+
+  - name: Rewe Group
+    ats: successfactors
+    config:
+      feed_url: "https://karriere.rewe-group.com/sitemal.xml"
+
+  - name: Aldi Süd
+    ats: successfactors
+    config:
+      feed_url: "https://jobs.aldi-sued.de/sitemal.xml"
