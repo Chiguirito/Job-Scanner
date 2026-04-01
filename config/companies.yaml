@@ -66,3 +66,7 @@ companies:
     ats: successfactors
     config:
       feed_url: "https://jobs.aldi-sued.de/sitemal.xml"
+
+  - name: Deutsche Post
+    ats: deutschepost
+    config: {}
