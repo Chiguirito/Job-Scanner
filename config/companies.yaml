@@ -70,3 +70,13 @@ companies:
   - name: Deutsche Post
     ats: deutschepost
     config: {}
+
+  - name: Lidl
+    ats: successfactors
+    config:
+      feed_url: "https://jobs.lidl/sitemal.xml"
+
+  - name: Kaufland
+    ats: successfactors
+    config:
+      feed_url: "https://jobs.kaufland.com/sitemal.xml"
