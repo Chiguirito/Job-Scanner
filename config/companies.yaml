@@ -85,3 +85,7 @@ companies:
     ats: smartrecruiters
     config:
       company_id: "BoschGroup"
+
+  - name: Edeka
+    ats: edeka
+    config: {}

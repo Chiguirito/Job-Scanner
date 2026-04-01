@@ -1,5 +1,6 @@
 from src.fetchers.base import BaseFetcher
 from src.fetchers.deutschepost import DeutschePostFetcher
+from src.fetchers.edeka import EdekaFetcher
 from src.fetchers.google import GoogleFetcher
 from src.fetchers.greenhouse import GreenhouseFetcher
 from src.fetchers.mercedesbenz import MercedesBenzFetcher
@@ -10,6 +11,7 @@ from src.fetchers.workday import WorkdayFetcher
 
 FETCHER_TYPES: dict[str, type[BaseFetcher]] = {
     "deutschepost": DeutschePostFetcher,
+    "edeka": EdekaFetcher,
     "google": GoogleFetcher,
     "greenhouse": GreenhouseFetcher,
     "mercedesbenz": MercedesBenzFetcher,
@@ -19,4 +21,4 @@ FETCHER_TYPES: dict[str, type[BaseFetcher]] = {
     "workday": WorkdayFetcher,
 }
 
-__all__ = ["BaseFetcher", "DeutschePostFetcher", "GoogleFetcher", "GreenhouseFetcher", "MercedesBenzFetcher", "SmartRecruitersFetcher", "SuccessFactorsFetcher", "VolkswagenFetcher", "WorkdayFetcher", "FETCHER_TYPES"]
+__all__ = ["BaseFetcher", "DeutschePostFetcher", "EdekaFetcher", "GoogleFetcher", "GreenhouseFetcher", "MercedesBenzFetcher", "SmartRecruitersFetcher", "SuccessFactorsFetcher", "VolkswagenFetcher", "WorkdayFetcher", "FETCHER_TYPES"]
