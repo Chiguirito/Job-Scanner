@@ -80,3 +80,8 @@ companies:
     ats: successfactors
     config:
       feed_url: "https://jobs.kaufland.com/sitemal.xml"
+
+  - name: Bosch
+    ats: smartrecruiters
+    config:
+      company_id: "BoschGroup"
