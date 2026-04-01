@@ -89,3 +89,7 @@ companies:
   - name: Edeka
     ats: edeka
     config: {}
+
+  - name: Siemens
+    ats: siemens
+    config: {}
