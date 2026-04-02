@@ -7,6 +7,7 @@ from pathlib import Path
 import yaml
 
 from src.fetchers import FETCHER_TYPES
+from src.fetchers.deutschebahn import DeutscheBahnConfig
 from src.fetchers.deutschepost import DeutschePostConfig
 from src.fetchers.edeka import EdekaConfig
 from src.fetchers.siemens import SiemensConfig
@@ -76,7 +77,9 @@ def build_fetcher(company_cfg: dict):
     fetcher_cls = FETCHER_TYPES[ats]
     cfg = company_cfg["config"]
 
-    if ats == "deutschepost":
+    if ats == "deutschebahn":
+        config = DeutscheBahnConfig(company=company_cfg["name"])
+    elif ats == "deutschepost":
         config = DeutschePostConfig(company=company_cfg["name"])
     elif ats == "edeka":
         config = EdekaConfig(company=company_cfg["name"])

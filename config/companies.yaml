@@ -93,3 +93,7 @@ companies:
   - name: Siemens
     ats: siemens
     config: {}
+
+  - name: Deutsche Bahn
+    ats: deutschebahn
+    config: {}
